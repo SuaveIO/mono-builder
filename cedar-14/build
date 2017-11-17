@@ -1,61 +1,8 @@
 #!/usr/bin/env bash
 
-set -e
-
-CACHE_DIR="/var/cache/mono-$VERSION"
-
-if [ ! -d "$CACHE_DIR" ]; then
-    git clone --recursive --depth 1 --branch mono-$VERSION https://github.com/mono/mono.git $CACHE_DIR
-fi
-
-rsync -r $CACHE_DIR . --exclude .git
-cd mono-$VERSION
-
-./autogen.sh
-./configure --prefix=/app/mono \
-    --disable-moonlight --disable-nls --enable-minimal=aot,profiler,debug,logging \
-    --disable-libraries --disable-boehm --with-mcs-docs=no \
-    --with-profile2=no
-make && make install
-
-echo "Mono build completed"
-
-cd ..
-echo "Install fsharp"
-git clone https://github.com/fsharp/fsharp
-cd fsharp
-export PATH=/app/mono/bin:$PATH
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/mono/lib/
-export PKG_CONFIG_PATH=/app/mono/lib/pkgconfig/
-echo "Run autogen"
-./autogen.sh --prefix=/app/mono
-echo "Run make"
-make
-echo "Run make install"
-make install
-echo "Fsharp installed"
-
-cd ..
-cd /app
-ls -al
-
-echo "Delete EntityFramework et al"
-
-rm -rf mono/lib/mono/gac/EntityFramework* \
-   mono/lib/mono/gac/System.Data.Entity
-
-echo "Delete *.mdb"
-
-find . -name "*.mdb" -delete
-find mono -name *Entity* -delete
-find mono -name sqlmetal.exe -delete
-
-echo "Running strip"
-
-find mono | xargs strip || true
-
 echo "Building archive"
-
+mkdir mono
+cp -r /usr/* mono/
 MONO_ARCHIVE=mono-$VERSION.tar.gz
 tar -zcf $MONO_ARCHIVE mono
 rm -rf /var/out/$MONO_ARCHIVE
